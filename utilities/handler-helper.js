@@ -6,6 +6,11 @@ const JoiMongooseHelper = require('./joi-mongoose-helper')
 const config = require('../config')
 const _ = require('lodash')
 const { truncatedStringify } = require('./log-util')
+const mongoose = require('mongoose')
+const {
+  buildAggregationForAssociation,
+  buildAggregationForList,
+} = require('./aggregation-query-builder')
 
 // TODO: add a "clean" method that clears out all soft-deleted docs
 // TODO: add an optional TTL config setting that determines how long soft-deleted docs remain in the system
@@ -55,7 +60,7 @@ module.exports = {
 
   getAll: _getAll,
 
-  getAllHandler: _getAllHandler
+  getAllHandler: _getAllHandler,
 }
 
 /**
@@ -110,7 +115,7 @@ async function _listV2({ model, query, Log, restCall = false, credentials }) {
       url: `/${model.routeOptions.alias || model.modelName}`,
       query,
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -144,44 +149,16 @@ async function _listHandler(model, request, Log) {
       handleError(err, 'There was a preprocessing error.', Boom.badRequest, Log)
     }
 
-    let mongooseQuery = {}
     let flatten = false
     if (query.$flatten) {
       flatten = true
     }
     delete query.$flatten
-    const { $embed } = query
-    if (query.$count) {
-      mongooseQuery = model.countDocuments()
-      mongooseQuery = QueryHelper.createMongooseQuery(
-        model,
-        query,
-        mongooseQuery,
-        Log
-      ).lean()
-      const result = await mongooseQuery.exec()
-      if (config.truncateLogs) {
-        Log.info(
-          'Result: %s',
-          truncatedStringify(result, config.truncateStringLength)
-        )
-      } else {
-        Log.info('Result: %s', JSON.stringify(result, null, 2))
-      }
-      return result
-    }
 
-    mongooseQuery = model.find()
-    mongooseQuery = QueryHelper.createMongooseQuery(
-      model,
-      query,
-      mongooseQuery,
-      Log
-    ).lean()
-    const filter = mongooseQuery.getFilter()
-    const count = await model.countDocuments(filter)
-    mongooseQuery = QueryHelper.paginate(query, mongooseQuery, Log)
+    let mongooseQuery = buildAggregationForList(query, model)
     let result = await mongooseQuery.exec()
+
+    result = result[0]
 
     try {
       if (
@@ -200,7 +177,9 @@ async function _listHandler(model, request, Log) {
       )
     }
 
-    result = result.map(data => {
+    const { count } = result.totalCount[0]
+
+    result = result.content.map((data) => {
       const result = data
       if (model.routeOptions) {
         const associations = model.routeOptions.associations
@@ -247,13 +226,13 @@ async function _listHandler(model, request, Log) {
       hasPrev: false,
       next: 0,
       hasNext: false,
-      total: 0
+      total: 0,
     }
     const items = {
       limit: query.$limit,
       begin: (query.$page || 1) * query.$limit - query.$limit + 1,
       end: (query.$page || 1) * query.$limit,
-      total: count
+      total: count,
     }
 
     pages.total = Math.ceil(count / query.$limit)
@@ -320,7 +299,7 @@ async function _findV2({
   query,
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   model = getModel(model)
   const RestHapi = require('../rest-hapi')
@@ -336,7 +315,7 @@ async function _findV2({
       params: { _id },
       query,
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -484,7 +463,7 @@ async function _createV2({
   payload,
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   model = getModel(model)
   const RestHapi = require('../rest-hapi')
@@ -499,7 +478,7 @@ async function _createV2({
       url: `/${model.routeOptions.alias || model.modelName}`,
       payload,
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -529,7 +508,7 @@ async function _createHandler(model, request, Log) {
       payload = [Object.assign({}, request.payload)]
       isArray = false
     } else {
-      payload = request.payload.map(item => {
+      payload = request.payload.map((item) => {
         return _.isObject(item) ? _.assignIn({}, item) : item
       })
     }
@@ -576,7 +555,7 @@ async function _createHandler(model, request, Log) {
     // EXPL: rather than returning the raw "create" data, we filter the data through a separate query
     const attributes = QueryHelper.createAttributesFilter({}, model, Log)
 
-    data = data.map(item => {
+    data = data.map((item) => {
       return item._id
     })
 
@@ -662,7 +641,7 @@ async function _updateV2({
   payload,
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   model = getModel(model)
   const RestHapi = require('../rest-hapi')
@@ -678,7 +657,7 @@ async function _updateV2({
       params: { _id },
       payload,
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -729,7 +708,7 @@ async function _updateHandler(model, _id, request, Log) {
     let result
     try {
       result = await model.findByIdAndUpdate(_id, payload, {
-        runValidators: config.enableMongooseRunValidators
+        runValidators: config.enableMongooseRunValidators,
       })
     } catch (err) {
       Log.error(err)
@@ -817,7 +796,7 @@ async function _deleteOneV2({
   hardDelete = false,
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   model = getModel(model)
   const RestHapi = require('../rest-hapi')
@@ -833,7 +812,7 @@ async function _deleteOneV2({
       params: { _id },
       payload: { hardDelete },
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -890,7 +869,7 @@ async function _deleteOneHandler(model, _id, hardDelete, request, Log) {
         }
         deleted = await model.findByIdAndUpdate(_id, payload, {
           new: true,
-          runValidators: config.enableMongooseRunValidators
+          runValidators: config.enableMongooseRunValidators,
         })
       } else {
         deleted = await model.findByIdAndRemove(_id)
@@ -980,7 +959,7 @@ async function _deleteManyV2({
   payload,
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   model = getModel(model)
   const RestHapi = require('../rest-hapi')
@@ -995,7 +974,7 @@ async function _deleteManyV2({
       url: `/${model.routeOptions.alias || model.modelName}`,
       payload,
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -1019,7 +998,7 @@ async function _deleteManyV2({
 async function _deleteManyHandler(model, request, Log) {
   try {
     // EXPL: make a copy of the payload so that request.payload remains unchanged
-    const payload = request.payload.map(item => {
+    const payload = request.payload.map((item) => {
       return _.isObject(item) ? _.assignIn({}, item) : item
     })
     const promises = []
@@ -1101,7 +1080,7 @@ function _addOneV1(
   childModel = getModel(childModel)
   const request = {
     params: { ownerId: ownerId, childId: childId },
-    payload: payload
+    payload: payload,
   }
   return _addOneHandler(
     ownerModel,
@@ -1123,7 +1102,7 @@ async function _addOneV2({
   payload = {},
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   ownerModel = getModel(ownerModel)
   childModel = getModel(childModel)
@@ -1144,7 +1123,7 @@ async function _addOneV2({
       payload,
       params: { ownerId, childId },
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -1329,7 +1308,7 @@ function _removeOneV1(
   childModel = getModel(childModel)
   const request = {
     params: { ownerId: ownerId, childId: childId },
-    payload: payload
+    payload: payload,
   }
   return _removeOneHandler(
     ownerModel,
@@ -1351,7 +1330,7 @@ async function _removeOneV2({
   payload = {},
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   ownerModel = getModel(ownerModel)
   childModel = getModel(childModel)
@@ -1372,7 +1351,7 @@ async function _removeOneV2({
       payload,
       params: { ownerId, childId },
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -1561,7 +1540,7 @@ async function _addManyV2({
   payload = {},
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   ownerModel = getModel(ownerModel)
   childModel = getModel(childModel)
@@ -1582,7 +1561,7 @@ async function _addManyV2({
       payload,
       params: { ownerId },
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -1621,7 +1600,7 @@ async function _addManyHandler(
 ) {
   try {
     // EXPL: make a copy of the payload so that request.payload remains unchanged
-    let payload = request.payload.map(item => {
+    let payload = request.payload.map((item) => {
       return _.isObject(item) ? _.cloneDeep(item) : item
     })
     if (_.isEmpty(request.payload)) {
@@ -1664,7 +1643,7 @@ async function _addManyHandler(
         childIds = payload
       } else {
         // EXPL: the payload contains extra fields
-        childIds = payload.map(object => {
+        childIds = payload.map((object) => {
           return object.childId
         })
       }
@@ -1795,7 +1774,7 @@ async function _removeManyV2({
   payload = {},
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   ownerModel = getModel(ownerModel)
   childModel = getModel(childModel)
@@ -1816,7 +1795,7 @@ async function _removeManyV2({
       payload,
       params: { ownerId },
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -1855,7 +1834,7 @@ async function _removeManyHandler(
 ) {
   try {
     // EXPL: make a copy of the payload so that request.payload remains unchanged
-    let payload = request.payload.map(item => {
+    let payload = request.payload.map((item) => {
       return _.isObject(item) ? _.cloneDeep(item) : item
     })
     if (_.isEmpty(request.payload)) {
@@ -2012,7 +1991,7 @@ async function _getAllV2({
   query,
   Log,
   restCall = false,
-  credentials
+  credentials,
 }) {
   ownerModel = getModel(ownerModel)
   childModel = getModel(childModel)
@@ -2033,7 +2012,7 @@ async function _getAllV2({
       query,
       params: { ownerId },
       credentials,
-      headers: { authorization: 'Bearer' }
+      headers: { authorization: 'Bearer' },
     }
 
     const injectOptions = RestHapi.testHelper.mockInjection(request)
@@ -2079,21 +2058,28 @@ async function _getAllHandler(
     const ownerRequest = { query: {} }
     ownerRequest.query.$embed = associationName
     ownerRequest.query.populateSelect = '_id'
+    ownerRequest.query.$linkingModelSort = query.$linkingModelSort
+
+    ownerRequest.query.$limit = 2
+
+    console.log(association, ownerModel)
+
     if (foreignField) {
       ownerRequest.query.populateSelect =
         ownerRequest.query.populateSelect + ',' + foreignField
     }
 
-    // EXPL: In order to allow for fully querying against the association data, we first embed the
-    // associations to get a list of _ids and extra fields. We then leverage _list
-    // to perform the full query.  Finally the extra fields (if they exist) are added to the final result
-    let mongooseQuery = ownerModel.findOne({ _id: ownerId })
-    mongooseQuery = QueryHelper.createMongooseQuery(
+    //debugger ;
+
+    const mongooseQuery = buildAggregationForAssociation(
+      query,
+      association,
+      associationName,
       ownerModel,
-      ownerRequest.query,
-      mongooseQuery,
-      Log
+      ownerId,
+      childModel
     )
+
     let result
     try {
       result = await mongooseQuery.exec()
@@ -2105,50 +2091,55 @@ async function _getAllHandler(
         Log
       )
     }
-    if (!result) {
+
+    if (!result || !result[0]) {
       throw Boom.notFound('owner object not found')
     }
-    result = result[associationName]
-    let childIds = []
-    let manyMany = false
-    if (association.type === 'MANY_MANY') {
-      childIds = result.map(object => {
-        if (!object[association.model]) {
-          throw Boom.badRequest(
-            'association object "' + association.model + '" does not exist'
-          )
-        }
-        return object[association.model]._id
-      })
-      manyMany = true
-    } else {
-      childIds = result.map(object => {
-        return object._id
-      })
+
+    result = result[0]
+
+    const { count = 0 } = result?.totalCount
+
+    const $page = query.$page || 1
+
+    const pages = {
+      current: $page,
+      prev: 0,
+      hasPrev: false,
+      next: 0,
+      hasNext: false,
+      total: 0,
     }
 
-    // EXPL: since the call to _listHandler is already filtering by _id, we must handle the special case
-    // where the user is also filtering by _id
-    if (query._id) {
-      if (!_.isArray(query._id)) {
-        query._id = [query._id]
-      }
-      childIds = childIds.filter(id => {
-        return query._id.find(_id => {
-          return _id.toString() === id.toString()
-        })
-      })
-      delete query._id
-    }
-    if (typeof query.$where === 'string') {
-      query.$where = JSON.parse(query.$where)
+    const items = {
+      limit: query.$limit,
+      begin: $page * query.$limit - query.$limit + 1,
+      end: $page * query.$limit,
+      total: count,
     }
 
-    // EXPL: also have to handle the special case for '$where._id' queries
-    if (query.$where && query.$where._id) {
-      query.$where._id = Object.assign({ $in: childIds }, query.$where._id)
+    pages.total = Math.ceil(count / query.$limit)
+    pages.next = pages.current + 1
+    pages.hasNext = pages.next <= pages.total
+    pages.prev = pages.current - 1
+    pages.hasPrev = pages.prev !== 0
+
+    if (items.begin > items.total) {
+      items.begin = items.total
+    }
+
+    if (items.end > items.total) {
+      items.end = items.total
+    }
+
+    if (
+      result.content &&
+      result.content[0] &&
+      result.content[0][associationName]
+    ) {
+      return { docs: result.content[0][associationName], pages, items }
     } else {
-      query.$where = Object.assign({ _id: { $in: childIds } }, query.$where)
+      return { docs: [], pages, items }
     }
 
     request.query = query
@@ -2156,8 +2147,15 @@ async function _getAllHandler(
     const listResult = await _listHandler(childModel, request, Log)
 
     if (manyMany && association.linkingModel) {
+      // EXPL: we have to sort docs to stay consistent with the order of the first query (if we have a $linkingModelSort parameter)
+      /*if (query.$linkingModelSort)
+      {
+        const childOrderMap = new Map;
+        childIds.forEach((childId, i) => childOrderMap.set(childId.toString(), i));
+        listResult.docs.sort((a, b) =>  childOrderMap.get(a._id.toString()) - childOrderMap.get(b._id.toString())  )
+      }*/
       // EXPL: we have to manually insert the extra fields into the result
-      const extraFieldData = result
+      /*const extraFieldData = result
       if (_.isArray(listResult.docs)) {
         for (const object of listResult.docs) {
           const data = extraFieldData.find(data => {
@@ -2173,7 +2171,7 @@ async function _getAllHandler(
           delete fields[association.model]
           object[association.linkingModel] = fields
         }
-      }
+      }*/
 
       try {
         if (
@@ -2244,7 +2242,7 @@ async function _setAssociation(
 
         extraFields = false
       } else {
-        payload = payload.filter(object => {
+        payload = payload.filter((object) => {
           // EXPL: the payload contains extra fields
           return object.childId.toString() === childObject._id.toString()
         })
@@ -2275,13 +2273,13 @@ async function _setAssociation(
         await linkingModel.findOneAndUpdate(query, payload, {
           new: true,
           upsert: true,
-          runValidators: config.enableMongooseRunValidators
+          runValidators: config.enableMongooseRunValidators,
         })
       } else {
         payload[childModel.modelName] = childObject._id
 
         let duplicate = ownerObject[associationName].filter(
-          associationObject => {
+          (associationObject) => {
             return (
               associationObject[childModel.modelName].toString() ===
               childId.toString()
@@ -2338,7 +2336,7 @@ async function _setAssociation(
         }
 
         duplicate = childObject[childAssociationName].filter(
-          associationObject => {
+          (associationObject) => {
             return (
               associationObject[ownerModel.modelName].toString() ===
               ownerObject._id.toString()
@@ -2359,15 +2357,15 @@ async function _setAssociation(
 
         await Promise.all([
           ownerModel.findByIdAndUpdate(ownerObject._id, ownerObject, {
-            runValidators: config.enableMongooseRunValidators
+            runValidators: config.enableMongooseRunValidators,
           }),
           childModel.findByIdAndUpdate(childObject._id, childObject, {
-            runValidators: config.enableMongooseRunValidators
-          })
+            runValidators: config.enableMongooseRunValidators,
+          }),
         ])
       }
     } else if (association.type === '_MANY') {
-      let duplicate = ownerObject[associationName].filter(_childId => {
+      let duplicate = ownerObject[associationName].filter((_childId) => {
         return _childId.toString() === childId.toString()
       })
       duplicate = duplicate[0]
@@ -2381,8 +2379,8 @@ async function _setAssociation(
 
       await Promise.all([
         ownerModel.findByIdAndUpdate(ownerObject._id, ownerObject, {
-          runValidators: config.enableMongooseRunValidators
-        })
+          runValidators: config.enableMongooseRunValidators,
+        }),
       ])
     } else {
       throw Boom.badRequest('Association type incorrectly defined.')
@@ -2444,7 +2442,7 @@ async function _removeAssociation(
         await linkingModel.findOneAndRemove(query)
       } else {
         // EXPL: remove the associated child from the owner
-        let deleteChild = ownerObject[associationName].filter(child => {
+        let deleteChild = ownerObject[associationName].filter((child) => {
           return (
             child[childModel.modelName].toString() ===
             childObject._id.toString()
@@ -2469,7 +2467,7 @@ async function _removeAssociation(
         const childAssociationName = childAssociation.include.as
 
         // EXPL: remove the associated owner from the child
-        let deleteOwner = childObject[childAssociationName].filter(owner => {
+        let deleteOwner = childObject[childAssociationName].filter((owner) => {
           return (
             owner[ownerModel.modelName].toString() ===
             ownerObject._id.toString()
@@ -2484,18 +2482,18 @@ async function _removeAssociation(
 
         await Promise.all([
           ownerModel.findByIdAndUpdate(ownerObject._id, ownerObject, {
-            runValidators: config.enableMongooseRunValidators
+            runValidators: config.enableMongooseRunValidators,
           }),
           childModel.findByIdAndUpdate(childObject._id, childObject, {
-            runValidators: config.enableMongooseRunValidators
-          })
+            runValidators: config.enableMongooseRunValidators,
+          }),
         ])
       }
     } else if (associationType === '_MANY') {
       // EXPL: remove reference from owner model
 
       // EXPL: remove the associated child from the owner
-      let deleteChild = ownerObject[associationName].filter(childId => {
+      let deleteChild = ownerObject[associationName].filter((childId) => {
         return childId.toString() === childObject._id.toString()
       })
       deleteChild = deleteChild[0]
@@ -2507,8 +2505,8 @@ async function _removeAssociation(
 
       await Promise.all([
         ownerModel.findByIdAndUpdate(ownerObject._id, ownerObject, {
-          runValidators: config.enableMongooseRunValidators
-        })
+          runValidators: config.enableMongooseRunValidators,
+        }),
       ])
     } else {
       throw Boom.badRequest('Association type incorrectly defined.')
@@ -2531,7 +2529,7 @@ async function _removeAssociation(
  */
 function filterDeletedEmbeds(result, parent, parentkey, depth, Log) {
   if (_.isArray(result)) {
-    result = result.filter(function(obj) {
+    result = result.filter(function (obj) {
       const keep = filterDeletedEmbeds(obj, result, parentkey, depth + 1, Log)
       // Log.log("KEEP:", keep);
       return keep
@@ -2578,13 +2576,13 @@ function flattenEmbeds(result, associations, $embed) {
   if (!Array.isArray($embed)) {
     $embed = $embed.split(',')
   }
-  $embed.forEach(function(embedString) {
+  $embed.forEach(function (embedString) {
     const embeds = embedString.split('.')
     const currentEmbed = embeds[0]
     const association = associations[currentEmbed]
 
     if (result[currentEmbed] && Array.isArray(result[currentEmbed])) {
-      result[currentEmbed] = result[currentEmbed].map(object => {
+      result[currentEmbed] = result[currentEmbed].map((object) => {
         if (object[association.model]) {
           object = object[association.model]
         }
@@ -2596,7 +2594,7 @@ function flattenEmbeds(result, associations, $embed) {
 
       if (!_.isEmpty(remainingEmbeds)) {
         const nextModel = getModel(association.model)
-        result[currentEmbed].forEach(function(nextResult) {
+        result[currentEmbed].forEach(function (nextResult) {
           flattenEmbeds(
             nextResult,
             nextModel.routeOptions.associations,

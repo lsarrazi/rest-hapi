@@ -7,7 +7,7 @@ const Q = require('q')
 const Hapi = require('@hapi/hapi')
 
 module.exports = (t, Mongoose, internals, Log) => {
-  return t.test('basic embedded association tests (REST)', function(t) {
+  return t.test('basic embedded association tests (REST)', function (t) {
     let users = []
     const userProfiles = []
     let roles = []
@@ -16,8 +16,8 @@ module.exports = (t, Mongoose, internals, Log) => {
     return (
       Q.when()
         // ONE_ONE associations work
-        .then(function() {
-          return t.test('ONE_ONE associations work', function(t) {
+        .then(function () {
+          return t.test('ONE_ONE associations work', function (t) {
             // <editor-fold desc="Arrange">
             const RestHapi = require('../../rest-hapi')
             const server = Hapi.Server()
@@ -30,7 +30,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                 __dirname,
                 '/test-scenarios/scenario-3/models'
               ),
-              embedAssociations: true
+              embedAssociations: true,
             }
 
             RestHapi.config = config
@@ -44,34 +44,34 @@ module.exports = (t, Mongoose, internals, Log) => {
                   plugin: RestHapi,
                   options: {
                     mongoose: Mongoose,
-                    config: config
-                  }
+                    config: config,
+                  },
                 })
-                .then(function() {
+                .then(function () {
                   server.start()
 
                   return RestHapi.create({
                     model: 'user',
                     payload: {
                       email: 'test@user.com',
-                      password: 'root'
+                      password: 'root',
                     },
-                    restCall: true
+                    restCall: true,
                   })
                 })
-                .then(function(response) {
+                .then(function (response) {
                   user = response
 
                   return RestHapi.create({
                     model: 'userProfile',
                     payload: {
                       status: 'Enabled',
-                      user: user._id
+                      user: user._id,
                     },
-                    restCall: true
+                    restCall: true,
                   })
                 })
-                .then(function(response) {
+                .then(function (response) {
                   userProfile = response
                   userProfiles.push(userProfiles)
 
@@ -79,27 +79,27 @@ module.exports = (t, Mongoose, internals, Log) => {
                     model: 'user',
                     _id: user._id,
                     payload: {
-                      profile: userProfile._id
+                      profile: userProfile._id,
                     },
-                    restCall: true
+                    restCall: true,
                   })
                 })
-                .then(function(response) {
+                .then(function (response) {
                   user = response
                   users.push(user)
 
                   return RestHapi.list({
                     model: 'user',
                     query: { $embed: ['profile'] },
-                    restCall: true
+                    restCall: true,
                   })
                 })
                 // </editor-fold>
 
                 // <editor-fold desc="Assert">
-                .then(function(response) {
+                .then(function (response) {
                   t.deepEquals(
-                    response.docs[0].profile,
+                    response.docs?.[0]?.profile,
                     userProfile,
                     'ONE_ONE association correct'
                   )
@@ -107,14 +107,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                 // </editor-fold>
 
                 // <editor-fold desc="Restore">
-                .then(function() {
+                .then(function () {
                   Decache('../../rest-hapi')
 
                   Decache('../config')
-                  Object.keys(Mongoose.models).forEach(function(key) {
+                  Object.keys(Mongoose.models).forEach(function (key) {
                     delete Mongoose.models[key]
                   })
-                  Object.keys(Mongoose.modelSchemas || []).forEach(function(
+                  Object.keys(Mongoose.modelSchemas || []).forEach(function (
                     key
                   ) {
                     delete Mongoose?.modelSchemas[key]
@@ -125,10 +125,10 @@ module.exports = (t, Mongoose, internals, Log) => {
           })
         })
         // adding and retrieving ONE_MANY/MANY_ONE associations works
-        .then(function() {
+        .then(function () {
           return t.test(
             'adding and retrieving ONE_MANY/MANY_ONE associations works',
-            function(t) {
+            function (t) {
               // <editor-fold desc="Arrange">
               const RestHapi = require('../../rest-hapi')
               const server = new Hapi.Server()
@@ -141,7 +141,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                   __dirname,
                   '/test-scenarios/scenario-3/models'
                 ),
-                embedAssociations: true
+                embedAssociations: true,
               }
 
               const promises = []
@@ -154,59 +154,59 @@ module.exports = (t, Mongoose, internals, Log) => {
                     plugin: RestHapi,
                     options: {
                       mongoose: Mongoose,
-                      config: config
-                    }
+                      config: config,
+                    },
                   })
-                  .then(function() {
+                  .then(function () {
                     server.start()
 
                     const payload = [
                       {
                         name: 'User',
-                        description: 'A standard user account.'
+                        description: 'A standard user account.',
                       },
                       {
                         name: 'Admin',
-                        description: 'A user with advanced permissions.'
+                        description: 'A user with advanced permissions.',
                       },
                       {
                         name: 'SuperAdmin',
-                        description: 'A user with full permissions.'
-                      }
+                        description: 'A user with full permissions.',
+                      },
                     ]
 
                     return RestHapi.create({
                       model: 'role',
                       payload,
-                      restCall: true
+                      restCall: true,
                     })
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     roles = roles.concat(response)
 
                     const payload = [
                       {
                         email: 'test@user2.com',
-                        password: 'root'
+                        password: 'root',
                       },
                       {
                         email: 'test@user3.com',
-                        password: 'root'
+                        password: 'root',
                       },
                       {
                         email: 'test@admin.com',
                         password: 'root',
-                        title: roles[1]._id
-                      }
+                        title: roles[1]._id,
+                      },
                     ]
 
                     return RestHapi.create({
                       model: 'user',
                       payload,
-                      restCall: true
+                      restCall: true,
                     })
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     users = users.concat(response)
 
                     return RestHapi.addOne({
@@ -215,10 +215,10 @@ module.exports = (t, Mongoose, internals, Log) => {
                       associationName: 'users',
                       ownerId: roles[0]._id,
                       childId: users[0]._id,
-                      restCall: true
+                      restCall: true,
                     })
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const payload = [users[1]._id, users[2]._id]
 
                     return RestHapi.addMany({
@@ -227,20 +227,20 @@ module.exports = (t, Mongoose, internals, Log) => {
                       associationName: 'users',
                       ownerId: roles[0]._id,
                       payload,
-                      restCall: true
+                      restCall: true,
                     })
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     promises.push(
                       RestHapi.find({
                         model: 'role',
                         _id: roles[0]._id,
                         query: { $embed: ['users'] },
-                        restCall: true
+                        restCall: true,
                       })
                     )
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     promises.push(
                       RestHapi.getAll({
                         ownerModel: 'role',
@@ -248,11 +248,11 @@ module.exports = (t, Mongoose, internals, Log) => {
                         associationName: 'users',
                         ownerId: roles[0]._id,
                         query: { $embed: ['title'] },
-                        restCall: true
+                        restCall: true,
                       })
                     )
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     promises.push(
                       RestHapi.list({
                         model: 'user',
@@ -262,14 +262,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                           email: [
                             users[0].email,
                             users[1].email,
-                            users[2].email
-                          ]
+                            users[2].email,
+                          ],
                         },
-                        restCall: true
+                        restCall: true,
                       })
                     )
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     promises.push(
                       RestHapi.list({
                         model: 'user',
@@ -278,36 +278,36 @@ module.exports = (t, Mongoose, internals, Log) => {
                           email: [
                             users[0].email,
                             users[1].email,
-                            users[2].email
-                          ]
+                            users[2].email,
+                          ],
                         },
-                        restCall: true
+                        restCall: true,
                       })
                     )
                   })
                   // </editor-fold>
 
                   // <editor-fold desc="Act">
-                  .then(function() {
+                  .then(function () {
                     return Promise.all(promises)
                   })
                   // </editor-fold>
 
                   // <editor-fold desc="Assert">
-                  .then(function(response) {
+                  .then(function (response) {
                     // EXPL: rearrange results to match order
                     const result1 = []
-                    response[0].users.forEach(function(user) {
+                    response[0].users.forEach(function (user) {
                       result1.push(
-                        response[3].docs.find(function(u) {
+                        response[3].docs.find(function (u) {
                           return u.email === user.email
                         })
                       )
                     })
                     const result2 = []
-                    response[1].docs.forEach(function(user) {
+                    response[1].docs.forEach(function (user) {
                       result2.push(
-                        response[2].docs.find(function(u) {
+                        response[2].docs.find(function (u) {
                           return u.email === user.email
                         })
                       )
@@ -346,7 +346,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                   // </editor-fold>
 
                   // <editor-fold desc="Restore">
-                  .then(function() {
+                  .then(function () {
                     Decache('../../rest-hapi')
 
                     Decache('../config')
@@ -362,10 +362,10 @@ module.exports = (t, Mongoose, internals, Log) => {
           )
         })
         // adding and retrieving MANY_MANY associations works
-        .then(function() {
+        .then(function () {
           return t.test(
             'adding and retrieving MANY_MANY associations works',
-            function(t) {
+            function (t) {
               // <editor-fold desc="Arrange">
               Mongoose = require('mongoose')
               Mongoose.Promise = Promise
@@ -380,7 +380,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                   __dirname,
                   '/test-scenarios/scenario-3/models'
                 ),
-                embedAssociations: true
+                embedAssociations: true,
               }
 
               const promises = []
@@ -393,41 +393,41 @@ module.exports = (t, Mongoose, internals, Log) => {
                     plugin: RestHapi,
                     options: {
                       mongoose: Mongoose,
-                      config: config
-                    }
+                      config: config,
+                    },
                   })
-                  .then(function() {
+                  .then(function () {
                     server.start()
 
                     const payload = [
                       {
                         name: 'root',
-                        description: 'Access to all endpoints'
+                        description: 'Access to all endpoints',
                       },
                       {
                         name: 'create',
-                        description: 'Access to all create endpoints'
+                        description: 'Access to all create endpoints',
                       },
                       {
                         name: 'read',
-                        description: 'Access to all read endpoints'
+                        description: 'Access to all read endpoints',
                       },
                       {
                         name: 'update',
-                        description: 'Access to all update endpoints'
+                        description: 'Access to all update endpoints',
                       },
                       {
                         name: 'delete',
-                        description: 'Access to all delete endpoints'
+                        description: 'Access to all delete endpoints',
                       },
                       {
                         name: 'associate',
-                        description: 'Access to all association endpoints'
+                        description: 'Access to all association endpoints',
                       },
                       {
                         name: 'nothing',
-                        description: 'Permission with no use.'
-                      }
+                        description: 'Permission with no use.',
+                      },
                     ]
 
                     const request = {
@@ -437,29 +437,29 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     permissions = permissions.concat(response.result)
 
                     const payload = [
-                      permissions.find(function(p) {
+                      permissions.find(function (p) {
                         return p.name === 'create'
                       })._id,
-                      permissions.find(function(p) {
+                      permissions.find(function (p) {
                         return p.name === 'read'
                       })._id,
-                      permissions.find(function(p) {
+                      permissions.find(function (p) {
                         return p.name === 'update'
                       })._id,
-                      permissions.find(function(p) {
+                      permissions.find(function (p) {
                         return p.name === 'delete'
-                      })._id
+                      })._id,
                     ]
 
                     const request = {
@@ -469,27 +469,27 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const payload = [
                       {
                         enabled: true,
-                        childId: permissions.find(function(p) {
+                        childId: permissions.find(function (p) {
                           return p.name === 'nothing'
-                        })._id
+                        })._id,
                       },
                       {
                         enabled: false,
-                        childId: permissions.find(function(p) {
+                        childId: permissions.find(function (p) {
                           return p.name === 'associate'
-                        })._id
-                      }
+                        })._id,
+                      },
                     ]
 
                     const request = {
@@ -499,15 +499,15 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
-                    const childId = permissions.find(function(p) {
+                  .then(function (response) {
+                    const childId = permissions.find(function (p) {
                       return p.name === 'root'
                     })._id
 
@@ -518,15 +518,15 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
-                    const childId = permissions.find(function(p) {
+                  .then(function (response) {
+                    const childId = permissions.find(function (p) {
                       return p.name === 'root'
                     })._id
                     const payload = { enabled: false }
@@ -537,14 +537,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/role/{_id}',
@@ -552,14 +552,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: { $embed: ['permissions'] },
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     promises.push(server.inject(injectOptions))
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/role/{ownerId}/permission',
@@ -567,14 +567,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     promises.push(server.inject(injectOptions))
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/user/{_id}',
@@ -582,14 +582,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: { $embed: ['permissions'] },
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     promises.push(server.inject(injectOptions))
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/user/{ownerId}/permissions',
@@ -597,56 +597,54 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     promises.push(server.inject(injectOptions))
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     promises.push(
-                      Mongoose.model('user')
-                        .find({ _id: users[0]._id })
-                        .exec()
+                      Mongoose.model('user').find({ _id: users[0]._id }).exec()
                     )
                   })
                   // </editor-fold>
 
                   // <editor-fold desc="Act">
-                  .then(function() {
+                  .then(function () {
                     return Promise.all(promises)
                   })
                   // </editor-fold>
 
                   // <editor-fold desc="Assert">
-                  .then(function(response) {
+                  .then(function (response) {
                     const result1Orig = response[0].result.permissions.map(
-                      function(obj) {
+                      function (obj) {
                         return obj.permission
                       }
                     )
                     const result2Orig = response[2].result.permissions.map(
-                      function(obj) {
+                      function (obj) {
                         obj.permission.user_permission = {
-                          enabled: obj.enabled
+                          enabled: obj.enabled,
                         }
                         return obj.permission
                       }
                     )
                     // EXPL: rearrange results to match order
                     const result1 = []
-                    response[1].result.docs.forEach(function(permission) {
+                    response[1].result.docs.forEach(function (permission) {
                       result1.push(
-                        result1Orig.find(function(perm) {
+                        result1Orig.find(function (perm) {
                           return perm.name === permission.name
                         })
                       )
                     })
                     const result2 = []
-                    response[3].result.docs.forEach(function(permission) {
+                    response[3].result.docs.forEach(function (permission) {
                       result2.push(
-                        result2Orig.find(function(perm) {
+                        result2Orig.find(function (perm) {
                           return perm.name === permission.name
                         })
                       )
@@ -670,13 +668,13 @@ module.exports = (t, Mongoose, internals, Log) => {
                   // </editor-fold>
 
                   // <editor-fold desc="Restore">
-                  .then(function() {
+                  .then(function () {
                     Decache('../../rest-hapi')
 
-                    Object.keys(Mongoose.models).forEach(function(key) {
+                    Object.keys(Mongoose.models).forEach(function (key) {
                       delete Mongoose.models[key]
                     })
-                    Object.keys(Mongoose.modelSchemas || []).forEach(function(
+                    Object.keys(Mongoose.modelSchemas || []).forEach(function (
                       key
                     ) {
                       delete Mongoose?.modelSchemas[key]
@@ -688,10 +686,10 @@ module.exports = (t, Mongoose, internals, Log) => {
           )
         })
         // adding and retrieving _MANY associations works
-        .then(function() {
+        .then(function () {
           return t.test(
             'adding and retrieving _MANY associations works',
-            function(t) {
+            function (t) {
               // <editor-fold desc="Arrange">
               const RestHapi = require('../../rest-hapi')
               const server = new Hapi.Server()
@@ -704,7 +702,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                   __dirname,
                   '/test-scenarios/scenario-3/models'
                 ),
-                embedAssociations: true
+                embedAssociations: true,
               }
 
               const promises = []
@@ -717,28 +715,28 @@ module.exports = (t, Mongoose, internals, Log) => {
                     plugin: RestHapi,
                     options: {
                       mongoose: Mongoose,
-                      config: config
-                    }
+                      config: config,
+                    },
                   })
-                  .then(function() {
+                  .then(function () {
                     server.start()
 
                     const payload = [
                       {
-                        text: '#cool'
+                        text: '#cool',
                       },
                       {
-                        text: '#notcool'
+                        text: '#notcool',
                       },
                       {
-                        text: '#soso'
+                        text: '#soso',
                       },
                       {
-                        text: '#ilovetags'
+                        text: '#ilovetags',
                       },
                       {
-                        text: '#enough'
-                      }
+                        text: '#enough',
+                      },
                     ]
 
                     const request = {
@@ -748,18 +746,18 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     hashtags = hashtags.concat(response.result)
 
                     const payload = {
-                      tags: [hashtags[0]._id, hashtags[1]._id]
+                      tags: [hashtags[0]._id, hashtags[1]._id],
                     }
 
                     const request = {
@@ -769,16 +767,16 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const payload = {
-                      tags: [hashtags[0]._id, hashtags[2]._id, hashtags[4]._id]
+                      tags: [hashtags[0]._id, hashtags[2]._id, hashtags[4]._id],
                     }
 
                     const request = {
@@ -788,35 +786,35 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'PUT',
                       url: '/user/{ownerId}/hashtag/{childId}',
                       params: {
                         ownerId: users[0]._id,
-                        childId: hashtags[2]._id
+                        childId: hashtags[2]._id,
                       },
                       query: {},
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const payload = [
                       hashtags[2]._id, // NOTE: duplicate, should only be added once
-                      hashtags[3]._id
+                      hashtags[3]._id,
                     ]
 
                     const request = {
@@ -826,14 +824,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/user/{_id}',
@@ -841,14 +839,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: { $embed: ['tags'] },
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     promises.push(server.inject(injectOptions))
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/user/{ownerId}/hashtag',
@@ -856,7 +854,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
@@ -866,18 +864,18 @@ module.exports = (t, Mongoose, internals, Log) => {
                   // </editor-fold>
 
                   // <editor-fold desc="Act">
-                  .then(function() {
+                  .then(function () {
                     return Promise.all(promises)
                   })
                   // </editor-fold>
 
                   // <editor-fold desc="Assert">
-                  .then(function(response) {
+                  .then(function (response) {
                     const result1 = [
                       hashtags[0],
                       hashtags[1],
                       hashtags[2],
-                      hashtags[3]
+                      hashtags[3],
                     ]
                     const result2 = [hashtags[0], hashtags[2], hashtags[4]]
                     t.deepEquals(
@@ -894,14 +892,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                   // </editor-fold>
 
                   // <editor-fold desc="Restore">
-                  .then(function() {
+                  .then(function () {
                     Decache('../../rest-hapi')
 
                     Decache('../config')
-                    Object.keys(Mongoose.models).forEach(function(key) {
+                    Object.keys(Mongoose.models).forEach(function (key) {
                       delete Mongoose.models[key]
                     })
-                    Object.keys(Mongoose.modelSchemas || []).forEach(function(
+                    Object.keys(Mongoose.modelSchemas || []).forEach(function (
                       key
                     ) {
                       delete Mongoose?.modelSchemas[key]
@@ -913,10 +911,10 @@ module.exports = (t, Mongoose, internals, Log) => {
           )
         })
         // removing ONE_MANY/MANY_ONE associations works
-        .then(function() {
+        .then(function () {
           return t.test(
             'removing ONE_MANY/MANY_ONE associations works',
-            function(t) {
+            function (t) {
               // <editor-fold desc="Arrange">
               const RestHapi = require('../../rest-hapi')
               const server = new Hapi.Server()
@@ -929,7 +927,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                   __dirname,
                   '/test-scenarios/scenario-3/models'
                 ),
-                embedAssociations: true
+                embedAssociations: true,
               }
 
               const promises = []
@@ -942,24 +940,24 @@ module.exports = (t, Mongoose, internals, Log) => {
                     plugin: RestHapi,
                     options: {
                       mongoose: Mongoose,
-                      config: config
-                    }
+                      config: config,
+                    },
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     return RestHapi.removeOne({
                       ownerModel: 'role',
                       ownerId: roles[0]._id,
                       childModel: 'user',
                       childId: users[0]._id,
                       associationName: 'users',
-                      restCall: true
+                      restCall: true,
                     })
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const payload = [
                       users[1]._id,
                       users[2]._id,
-                      users[3]._id // NOTE: this user doesn't belong to the role, so the association shouldn't be removed from the user
+                      users[3]._id, // NOTE: this user doesn't belong to the role, so the association shouldn't be removed from the user
                     ]
 
                     return RestHapi.removeMany({
@@ -968,10 +966,10 @@ module.exports = (t, Mongoose, internals, Log) => {
                       childModel: 'user',
                       associationName: 'users',
                       payload,
-                      restCall: true
+                      restCall: true,
                     })
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/role/{ownerId}/people',
@@ -979,14 +977,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: { $embed: ['title'] },
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     promises.push(server.inject(injectOptions))
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/user',
@@ -994,7 +992,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
@@ -1004,16 +1002,16 @@ module.exports = (t, Mongoose, internals, Log) => {
                   // </editor-fold>
 
                   // <editor-fold desc="Act">
-                  .then(function() {
+                  .then(function () {
                     return Promise.all(promises)
                   })
                   // </editor-fold>
 
                   // <editor-fold desc="Assert">
-                  .then(function(response) {
+                  .then(function (response) {
                     let result2 = true
                     let result3 = false
-                    response[1].result.docs.forEach(function(user) {
+                    response[1].result.docs.forEach(function (user) {
                       if (
                         user.title &&
                         user.title.toString() !== roles[1]._id.toString()
@@ -1038,15 +1036,15 @@ module.exports = (t, Mongoose, internals, Log) => {
                   // </editor-fold>
 
                   // <editor-fold desc="Restore">
-                  .then(function() {
+                  .then(function () {
                     Decache('../../rest-hapi')
 
                     Decache('../config')
                     delete Mongoose.models.role
-                    Object.keys(Mongoose.models).forEach(function(key) {
+                    Object.keys(Mongoose.models).forEach(function (key) {
                       delete Mongoose.models[key]
                     })
-                    Object.keys(Mongoose.modelSchemas || []).forEach(function(
+                    Object.keys(Mongoose.modelSchemas || []).forEach(function (
                       key
                     ) {
                       delete Mongoose?.modelSchemas[key]
@@ -1058,8 +1056,8 @@ module.exports = (t, Mongoose, internals, Log) => {
           )
         })
         // removing MANY_MANY associations works
-        .then(function() {
-          return t.test('removing MANY_MANY associations works', function(t) {
+        .then(function () {
+          return t.test('removing MANY_MANY associations works', function (t) {
             // <editor-fold desc="Arrange">
             const RestHapi = require('../../rest-hapi')
             const server = new Hapi.Server()
@@ -1072,7 +1070,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                 __dirname,
                 '/test-scenarios/scenario-3/models'
               ),
-              embedAssociations: true
+              embedAssociations: true,
             }
 
             const promises = []
@@ -1085,11 +1083,11 @@ module.exports = (t, Mongoose, internals, Log) => {
                   plugin: RestHapi,
                   options: {
                     mongoose: Mongoose,
-                    config: config
-                  }
+                    config: config,
+                  },
                 })
-                .then(function(response) {
-                  const childId = permissions.find(function(p) {
+                .then(function (response) {
+                  const childId = permissions.find(function (p) {
                     return p.name === 'root'
                   })._id
 
@@ -1100,15 +1098,15 @@ module.exports = (t, Mongoose, internals, Log) => {
                     query: {},
                     payload: {},
                     credentials: {},
-                    headers: {}
+                    headers: {},
                   }
 
                   const injectOptions = TestHelper.mockInjection(request)
 
                   return server.inject(injectOptions)
                 })
-                .then(function(response) {
-                  const childId = permissions.find(function(p) {
+                .then(function (response) {
+                  const childId = permissions.find(function (p) {
                     return p.name === 'root'
                   })._id
                   const payload = { enabled: false }
@@ -1119,27 +1117,27 @@ module.exports = (t, Mongoose, internals, Log) => {
                     query: {},
                     payload: payload,
                     credentials: {},
-                    headers: {}
+                    headers: {},
                   }
 
                   const injectOptions = TestHelper.mockInjection(request)
 
                   return server.inject(injectOptions)
                 })
-                .then(function(response) {
+                .then(function (response) {
                   const payload = [
-                    permissions.find(function(p) {
+                    permissions.find(function (p) {
                       return p.name === 'create'
                     })._id,
-                    permissions.find(function(p) {
+                    permissions.find(function (p) {
                       return p.name === 'read'
                     })._id,
-                    permissions.find(function(p) {
+                    permissions.find(function (p) {
                       return p.name === 'update'
                     })._id,
-                    permissions.find(function(p) {
+                    permissions.find(function (p) {
                       return p.name === 'delete'
-                    })._id
+                    })._id,
                   ]
 
                   const request = {
@@ -1149,21 +1147,21 @@ module.exports = (t, Mongoose, internals, Log) => {
                     query: {},
                     payload: payload,
                     credentials: {},
-                    headers: {}
+                    headers: {},
                   }
 
                   const injectOptions = TestHelper.mockInjection(request)
 
                   return server.inject(injectOptions)
                 })
-                .then(function(response) {
+                .then(function (response) {
                   const payload = [
-                    permissions.find(function(p) {
+                    permissions.find(function (p) {
                       return p.name === 'nothing'
                     })._id,
-                    permissions.find(function(p) {
+                    permissions.find(function (p) {
                       return p.name === 'associate'
-                    })._id
+                    })._id,
                   ]
 
                   const request = {
@@ -1173,14 +1171,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                     query: {},
                     payload: payload,
                     credentials: {},
-                    headers: {}
+                    headers: {},
                   }
 
                   const injectOptions = TestHelper.mockInjection(request)
 
                   return server.inject(injectOptions)
                 })
-                .then(function(response) {
+                .then(function (response) {
                   const request = {
                     method: 'GET',
                     url: '/role/{ownerId}/permission',
@@ -1188,14 +1186,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                     query: {},
                     payload: {},
                     credentials: {},
-                    headers: {}
+                    headers: {},
                   }
 
                   const injectOptions = TestHelper.mockInjection(request)
 
                   promises.push(server.inject(injectOptions))
                 })
-                .then(function(response) {
+                .then(function (response) {
                   const request = {
                     method: 'GET',
                     url: '/user/{ownerId}/permissions',
@@ -1203,7 +1201,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                     query: {},
                     payload: {},
                     credentials: {},
-                    headers: {}
+                    headers: {},
                   }
 
                   const injectOptions = TestHelper.mockInjection(request)
@@ -1213,13 +1211,13 @@ module.exports = (t, Mongoose, internals, Log) => {
                 // </editor-fold>
 
                 // <editor-fold desc="Act">
-                .then(function() {
+                .then(function () {
                   return Promise.all(promises)
                 })
                 // </editor-fold>
 
                 // <editor-fold desc="Assert">
-                .then(function(response) {
+                .then(function (response) {
                   t.deepEquals(
                     response[0].result.docs,
                     [],
@@ -1234,14 +1232,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                 // </editor-fold>
 
                 // <editor-fold desc="Restore">
-                .then(function() {
+                .then(function () {
                   Decache('../../rest-hapi')
 
                   Decache('../config')
-                  Object.keys(Mongoose.models).forEach(function(key) {
+                  Object.keys(Mongoose.models).forEach(function (key) {
                     delete Mongoose.models[key]
                   })
-                  Object.keys(Mongoose.modelSchemas || []).forEach(function(
+                  Object.keys(Mongoose.modelSchemas || []).forEach(function (
                     key
                   ) {
                     delete Mongoose?.modelSchemas[key]
@@ -1252,10 +1250,10 @@ module.exports = (t, Mongoose, internals, Log) => {
           })
         })
         // removing _MANY associations works
-        .then(function() {
+        .then(function () {
           return t.test(
             'removing ONE_MANY/MANY_ONE associations works',
-            function(t) {
+            function (t) {
               // <editor-fold desc="Arrange">
               const RestHapi = require('../../rest-hapi')
               const server = new Hapi.Server()
@@ -1268,7 +1266,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                   __dirname,
                   '/test-scenarios/scenario-3/models'
                 ),
-                embedAssociations: true
+                embedAssociations: true,
               }
 
               const promises = []
@@ -1281,32 +1279,32 @@ module.exports = (t, Mongoose, internals, Log) => {
                     plugin: RestHapi,
                     options: {
                       mongoose: Mongoose,
-                      config: config
-                    }
+                      config: config,
+                    },
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'DELETE',
                       url: '/user/{ownerId}/hashtag/{childId}',
                       params: {
                         ownerId: users[0]._id,
-                        childId: hashtags[0]._id
+                        childId: hashtags[0]._id,
                       },
                       query: {},
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const payload = [
                       hashtags[1]._id,
                       hashtags[2]._id,
-                      hashtags[3]._id
+                      hashtags[3]._id,
                     ]
 
                     const request = {
@@ -1316,14 +1314,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: payload,
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
 
                     return server.inject(injectOptions)
                   })
-                  .then(function(response) {
+                  .then(function (response) {
                     const request = {
                       method: 'GET',
                       url: '/user/{ownerId}/hashtag',
@@ -1331,7 +1329,7 @@ module.exports = (t, Mongoose, internals, Log) => {
                       query: {},
                       payload: {},
                       credentials: {},
-                      headers: {}
+                      headers: {},
                     }
 
                     const injectOptions = TestHelper.mockInjection(request)
@@ -1341,13 +1339,13 @@ module.exports = (t, Mongoose, internals, Log) => {
                   // </editor-fold>
 
                   // <editor-fold desc="Act">
-                  .then(function() {
+                  .then(function () {
                     return Promise.all(promises)
                   })
                   // </editor-fold>
 
                   // <editor-fold desc="Assert">
-                  .then(function(response) {
+                  .then(function (response) {
                     t.deepEquals(
                       response[0].result.docs,
                       [],
@@ -1357,14 +1355,14 @@ module.exports = (t, Mongoose, internals, Log) => {
                   // </editor-fold>
 
                   // <editor-fold desc="Restore">
-                  .then(function() {
+                  .then(function () {
                     Decache('../../rest-hapi')
 
                     Decache('../config')
-                    Object.keys(Mongoose.models).forEach(function(key) {
+                    Object.keys(Mongoose.models).forEach(function (key) {
                       delete Mongoose.models[key]
                     })
-                    Object.keys(Mongoose.modelSchemas || []).forEach(function(
+                    Object.keys(Mongoose.modelSchemas || []).forEach(function (
                       key
                     ) {
                       delete Mongoose?.modelSchemas[key]

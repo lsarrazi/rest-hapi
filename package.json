@@ -27,7 +27,8 @@
     "report-coverage": "nyc report --reporter=html --reporter=text-lcov > coverage.lcov && codecov",
     "patch-release-git": "git add . && git commit -a -m 'patch release' && git push && npm version patch && npm publish",
     "patch-release": "npm version patch && npm publish",
-    "lint": "eslint --fix **/*.js ./"
+    "lint": "eslint --fix **/*.js ./",
+    "start": "node api.js"
   },
   "lint-staged": {
     "**/*.js": [

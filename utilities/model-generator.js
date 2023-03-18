@@ -12,7 +12,7 @@ const path = require('path')
  * @param config
  * @returns {*|promise}
  */
-module.exports = function(mongoose, logger, config) {
+module.exports = function (mongoose, logger, config) {
   const Log = logger.bind('model-generator')
 
   const models = {}
@@ -22,7 +22,7 @@ module.exports = function(mongoose, logger, config) {
   if (config.absoluteModelPath === true) {
     modelPath = config.modelPath
   } else {
-    modelPath = path.join(__dirname, '/../../../', config.modelPath)
+    modelPath = path.join(process.cwd(), config.modelPath)
   }
 
   return new Promise((resolve, reject) => {

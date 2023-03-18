@@ -271,6 +271,7 @@ internals.generateJoiListQueryModel = function(model, logger) {
     $limit: Joi.number()
       .integer()
       .min(0)
+      .default(1)
       .optional()
       .description(
         'The maximum number of records to return. This is typically used in pagination.'
@@ -313,14 +314,14 @@ internals.generateJoiListQueryModel = function(model, logger) {
     )
     queryModel.$sort = Joi.alternatives().try(
       Joi.array()
-        .items(Joi.string().valid(...sortableFields))
+        .items(Joi.string().regex(/^[a-z][\w-]*(?:\.[\w-]+)*$/, 'members expression (ex: x.y.z)'))//.valid(...sortableFields))
         .description(
           'A set of fields to sort by. Including field name indicates it should be sorted ascending, while prepending ' +
             "'-' indicates descending. The default sort direction is 'ascending' (lowest value to highest value). Listing multiple" +
             'fields prioritizes the sort starting with the first field listed. Valid values include: ' +
             sortableFields.toString().replace(/,/g, ', ')
         ),
-      Joi.string().valid(...sortableFields)
+      Joi.string().regex(/^[a-z][\w-]*(?:\.[\w-]+)*$/, 'members expression (ex: x.y.z)')
     )
     queryModel.$exclude = Joi.alternatives().try(
       Joi.array()
@@ -371,8 +372,7 @@ internals.generateJoiListQueryModel = function(model, logger) {
     )
   }
 
-  queryModel = Joi.object(queryModel)
-
+  queryModel = Joi.object(queryModel).unknown(true)
   if (!config.enableQueryValidation) {
     queryModel = queryModel.unknown()
   }
